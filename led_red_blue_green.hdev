@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.1" halcon_version="12.0">
+<procedure name="main">
+<interface/>
+<body>
+<l>read_image (Blue, 'C:/Users/wuhq/Desktop/blue.BMP')</l>
+<c></c>
+<l>read_image (all, 'C:/Users/wuhq/Desktop/Camera MV-GE500C#C0A800F3-Snapshot-20190307100152-18989262740.BMP')</l>
+<l>*read_image (all, 'C:/Users/wuhq/Desktop/下载 (2).jpg')</l>
+<l>rgb1_to_gray (all, GrayImage)</l>
+<l>threshold (GrayImage, Regions, 40, 255)</l>
+<l>fill_up (Regions, RegionFillUp)</l>
+<l>dilation_circle (RegionFillUp, RegionDilation, 10.5)</l>
+<l>reduce_domain (all, RegionDilation, ImageReduced)</l>
+<c></c>
+<l>decompose3 (ImageReduced, Image1, Image2, Image3)</l>
+<l>trans_from_rgb (Image1, Image2, Image3, Hue, Sat, Val, 'hsv')</l>
+<l>threshold (Hue, BlueRegions1, 128, 191)</l>
+<l>threshold (Hue, redRegions1, 212, 255)</l>
+<l>read_image (Hueimg, 'E:/LedDll/testLedDll/hueimg.jpg')</l>
+<c></c>
+<l>threshold (Hue, greenRegions1, 40, 128)</l>
+<c></c>
+<l>read_image (CameraMvGe500cC0a800f3Snapshot2019030710015218989262740, 'C:/Users/wuhq/Desktop/Camera MV-GE500C#C0A800F3-Snapshot-20190307100152-18989262740.BMP')</l>
+<l>decompose3 (CameraMvGe500cC0a800f3Snapshot2019030710015218989262740, Image11, Image21, Image31)</l>
+<c></c>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+</hdevelop>
