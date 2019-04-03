@@ -24,6 +24,9 @@
     <ClCompile Include="stdafx.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="Class\Ini.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="LedDll.h">
@@ -36,6 +39,12 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="Resource.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="LedInterface.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Class\Ini.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

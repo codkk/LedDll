@@ -76,7 +76,7 @@ BOOL CtestLedDllDlg::OnInitDialog()
 		AfxMessageBox(_T("function  load failed!\n"));
 		return false;
 	}
-	pUinitFun = (UinitDll)::GetProcAddress(dllHandle, "UnitDll");
+	pUinitFun = (UinitDll)::GetProcAddress(dllHandle, "UinitDll");
 	if (pUinitFun == NULL) {
 		AfxMessageBox(_T("function  load failed!\n"));
 		return false;
