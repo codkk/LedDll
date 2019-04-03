@@ -21,3 +21,5 @@ extern "C" _declspec(dllexport) bool InitDll();
 //函数： 反初始化dll（断开相机，加载标准参数）
 //返回值： 反初始化结果true or false
 extern "C" _declspec(dllexport) bool UinitDll();
+
+extern "C" _declspec(dllexport) int GrabOneImage();

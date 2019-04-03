@@ -410,9 +410,9 @@ bool InitDll()
 	else
 	{
 		//加载参数文件
-		if (!m_Cam.LoadIni(0, "myconfig.Config"))
+		if (!m_Cam.LoadIni(0, "Para\\myconfig.Config"))
 		{
-			AfxMessageBox(_T("加载参数不成功"));
+			AfxMessageBox(_T("加载相机参数不成功"));
 		}
 	}
 
@@ -509,11 +509,69 @@ int Run(char* pPath, char* pRes)
 		imwrite(strPath.GetBuffer(), g_ImageSrc);
 	}
 	//显示结果,图像，保存文本
+	//设置绘制文本的相关参数
+	FILE *pFile = fopen("result.txt", "w");
+	for (int i = 0; i < g_vecTask.size(); i++)
+	{
+		std::string text = "UnKnown";
+		cv::Scalar color = cv::Scalar(255, 255, 0);
+		if (i < g_vecResult.size())
+		{
+			if (g_vecResult[i].bOk)
+			{
+				text = "OK";
+				color = cv::Scalar(0, 255, 0);
+				fprintf(pFile, "OK,%.2lf\n", g_vecResult[i].Area);
+			}
+			else
+			{
+				text = "NG";
+				color = cv::Scalar(0, 0, 255);
+				fprintf(pFile, "NG,%.2lf\n", g_vecResult[i].Area);
+			}
+		}
+		else
+		{
+			fprintf(pFile, "Unknown, 0\n");
+		}
+		
+		int font_face = cv::FONT_HERSHEY_COMPLEX;
+		double font_scale = 4;
+		int thickness = 4;
+		int baseline;
+		cv::Point origin;
+		origin.x = (g_vecTask[i].Left + g_vecTask[i].Right)/2;
+		origin.y = (g_vecTask[i].Top + g_vecTask[i].Bottom)/2;
+		cv::putText(g_ImageSrc, text, origin, font_face, font_scale, color, thickness, 8, 0);
+	}
+	fclose(pFile);
+	cv::imshow(WIN_SRC_IMG, g_ImageSrc);
+	cv::waitKey(1000);
 
 	//关闭窗口
 	cv::destroyAllWindows();
 
+	return ERR_SUCCESS;
+}
 
-
-	return 0;
+int GrabOneImage()
+{
+	//获取图像
+	tSdkFrame Image;
+	CameraSdkStatus st = m_Cam.GetImage(0, Image);
+	if (st != CAMERA_STATUS_SUCCESS)
+	{
+		return ERR_CAM;
+	}
+	cv::Mat tmp2(
+		cvSize(Image.head.iWidth, Image.head.iHeight),
+		Image.head.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? CV_8UC1 : CV_8UC3,
+		Image.pBuffer
+	);
+	//上下翻转
+	cv::flip(tmp2, tmp2, 0);
+	//g_ImageSrc = tmp2;
+	//g_ImageSrc = imread("test2.jpg");
+	imwrite("GrabOneImg.jpg", tmp2);
+	return ERR_SUCCESS;
 }
