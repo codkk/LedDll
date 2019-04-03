@@ -292,7 +292,7 @@ int  JudgeColor(Mat& ImgSrc, TaskPara& Task, ResultPara& result)
 	//0. 切图
 	cv::Rect roi = cv::Rect(Task.Left, Task.Top, Task.Right-Task.Left, Task.Bottom-Task.Top);
 	Mat roiImg = ImgSrc(roi);
-	imshow(WIN_ROI_IMG, roiImg);
+	cv::imshow(WIN_ROI_IMG, roiImg);
 	imwrite("roi.jpg", roiImg);
 	//深拷贝
 	//Mat roiImg = Mat()
@@ -316,7 +316,7 @@ int  JudgeColor(Mat& ImgSrc, TaskPara& Task, ResultPara& result)
 	//2. 色调直方图(可不用)
 	Mat dst(256, 256, CV_8UC3, Scalar(0));
 	DrawHist(imageHue,dst);
-	imshow(WIN_HIS_IMG, dst);
+	cv::imshow(WIN_HIS_IMG, dst);
 	//waitKey();
 	
 	//3. 二值化并计算面积
@@ -361,7 +361,7 @@ int  JudgeColor(Mat& ImgSrc, TaskPara& Task, ResultPara& result)
 	//腐蚀
 	Mat element = getStructuringElement(MORPH_RECT, Size(stdPara.ClosingSize, stdPara.ClosingSize));
 	erode(binImg, binImg, element);
-	imshow(WIN_BIN_IMG, binImg);
+	cv::imshow(WIN_BIN_IMG, binImg);
 	//waitKey(0);
 
 	//4. 计算面积
@@ -475,7 +475,7 @@ int Run(char* pPath, char* pRes)
 	resizeWindow(WIN_BIN_IMG, 320, 240);
 	moveWindow(WIN_BIN_IMG, 640+320+320, 0);
 
-	imshow(WIN_SRC_IMG, g_ImageSrc);
+	cv::imshow(WIN_SRC_IMG, g_ImageSrc);
 
 	//根据任务识别颜色
 	vector<bool> vctRes;
@@ -493,7 +493,7 @@ int Run(char* pPath, char* pRes)
 			return ERR_COLOR;
 		bSuccess &= ret;
 		if(g_bDebug)
-			waitKey(1000);
+			cv::waitKey(1000);
 		vctRes.push_back(ret);
 		g_vecResult.push_back(Result);
 	}
