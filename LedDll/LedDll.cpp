@@ -490,7 +490,11 @@ int Run(char* pPath, char* pRes)
 		else if (ret == 0)
 			pRes[i] = 0;
 		else
+		{
+			cv::destroyAllWindows();
 			return ERR_COLOR;
+		}
+
 		bSuccess &= ret;
 		if(g_bDebug)
 			cv::waitKey(1000);
