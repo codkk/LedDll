@@ -37,3 +37,9 @@
 #endif // _AFX_NO_AFXCMN_SUPPORT
 
 
+#include "MVcamera.h"		//Ïà»úÄ£¿é
+#ifdef _DEBUG
+#pragma comment(lib,"..\\x64\\Debug\\CameraDll.lib")
+#else
+#pragma comment(lib,"..\\x64\\Release\\CameraDll.lib")
+#endif

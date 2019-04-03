@@ -41,6 +41,12 @@ using namespace std;
 #define SUB_TASK_TOP "Top"
 #define SUB_TASK_LFT "Left"
 
+//Window
+#define WIN_SRC_IMG "Src"
+#define WIN_BIN_IMG "Bin"
+#define WIN_HIS_IMG "Hst"
+#define WIN_ROI_IMG "Roi"
+
 /////////////////////////////
 
 
@@ -141,14 +147,21 @@ typedef struct TaskPara {
 		Name = "";
 	}
 }TaskPara;
-
-
+//结果
+typedef struct ResultPara {
+	bool bOk;
+	double Area;
+	ResultPara() {
+		bOk = true;
+		Area = 0.0;
+	}
+}ResultPara;
 ////////////////////////////////////
 //全局变量
 //显示相关
 Mat g_ImageSrc;	//原图
 Mat g_ImageHue; //色调0-180
-
+MVcamera m_Cam;	//相机1
 
 //算法相关
 
@@ -157,7 +170,7 @@ Mat g_ImageHue; //色调0-180
 BOOL g_bDebug = FALSE;
 vector<ColorPara> g_vecPara;
 vector<TaskPara> g_vecTask;
-
+vector<ResultPara> g_vecResult;
 ////////////////////////////////////
 //加载标准参数
 bool LoadColorParas(char* path)
@@ -273,11 +286,17 @@ bool DrawHist(Mat& src, Mat& dst)
 //函数: 判断图像某以区域的颜色
 //
 //
-bool JudgeColor(Mat& ImgSrc, TaskPara& Task)
+int  JudgeColor(Mat& ImgSrc, TaskPara& Task, ResultPara& result)
 {
+	
 	//0. 切图
-	cv::Rect roi = cv::Rect(Task.Left, Task.Right, Task.Right-Task.Left, Task.Bottom-Task.Top);
+	cv::Rect roi = cv::Rect(Task.Left, Task.Top, Task.Right-Task.Left, Task.Bottom-Task.Top);
 	Mat roiImg = ImgSrc(roi);
+	imshow(WIN_ROI_IMG, roiImg);
+	imwrite("roi.jpg", roiImg);
+	//深拷贝
+	//Mat roiImg = Mat()
+
 	//imshow("roi", roiImg);
 	//waitKey(0);
 
@@ -285,17 +304,21 @@ bool JudgeColor(Mat& ImgSrc, TaskPara& Task)
 	Mat dstImage;
 	cvtColor(roiImg, dstImage, COLOR_BGR2HLS);
 	
-	vector<Mat> channels;
+	//vector<Mat> channels;
+	Mat channels[3];
+	channels[0] = Mat::zeros(dstImage.size(), CV_8UC1);
+	channels[1] = Mat::zeros(dstImage.size(), CV_8UC1);
+	channels[2] = Mat::zeros(dstImage.size(), CV_8UC1);
 	Mat imageHue;
 	split(dstImage, channels);
-	imageHue = channels.at(0);
+	imageHue = channels[0];
 
 	//2. 色调直方图(可不用)
 	Mat dst(256, 256, CV_8UC3, Scalar(0));
 	DrawHist(imageHue,dst);
-	imshow("dst", dst);
+	imshow(WIN_HIS_IMG, dst);
 	//waitKey();
-
+	
 	//3. 二值化并计算面积
 	int colorTy = Task.ColorType;
 	int min = 0;
@@ -310,7 +333,7 @@ bool JudgeColor(Mat& ImgSrc, TaskPara& Task)
 			break;
 		}
 	}
-	if (!flag) return false;
+	if (!flag) return ERR_COLOR;
 
 	ColorPara stdPara = g_vecPara.at(idx);
 	min = stdPara.valMin;
@@ -318,6 +341,7 @@ bool JudgeColor(Mat& ImgSrc, TaskPara& Task)
 
 	//最大xian值小于最小限值，例如180~40，指的是 180到255， 0到40这两段二值化。
 	Mat binImg;
+	Mat closeImg;
 	if (max < min)
 	{
 		Mat Image1;
@@ -334,36 +358,41 @@ bool JudgeColor(Mat& ImgSrc, TaskPara& Task)
 		threshold(imageHue, Image2, max, 255, THRESH_BINARY_INV);
 		bitwise_and(Image1, Image2, binImg);
 	}
-
-	imshow("binImg", binImg);
+	//腐蚀
+	Mat element = getStructuringElement(MORPH_RECT, Size(stdPara.ClosingSize, stdPara.ClosingSize));
+	erode(binImg, binImg, element);
+	imshow(WIN_BIN_IMG, binImg);
 	//waitKey(0);
 
 	//4. 计算面积
-	Moments mu;
-	mu = moments(binImg);
-	double area = mu.m00;
-
 	vector<vector<Point>> contours;
 	vector<Vec4i> hierarchy;
 	RNG rng;
-	area = 0.0;
+	double area = 0.0;
 	findContours(binImg, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
 	/// Draw contours
 	Mat drawing = Mat::zeros(binImg.size(), CV_8UC3);
 	for (int i = 0; i< contours.size(); i++)
 	{
-		Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));		
-		drawContours(roiImg, contours, i, Scalar(255,255,0), 2, 8, hierarchy, 0, Point());
+		//Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));		
+		//drawContours(roiImg, contours, i, Scalar(255,255,0), 2, 8, hierarchy, 0, Point());
 		area +=(contourArea(contours[i]));
 	}
-	imshow("roi", roiImg);
-	imwrite("roi.jpg", roiImg);
-	waitKey(0);
-	if (area >= (double)stdPara.AreaThr)
-		return true;
+	result.Area = area;
+	//waitKey(0);
+	if (area >= stdPara.AreaThr)
+	{
+		result.bOk = true;
+		return 1;
+	}
 	else
-		return false;
-	//return true;
+	{
+		result.bOk = false;
+		return 0;
+	}
+
+	
+	return ERR_COLOR;
 }
 
 
@@ -371,12 +400,29 @@ bool JudgeColor(Mat& ImgSrc, TaskPara& Task)
 
 bool InitDll()
 {
+	//
+	m_Cam.InitCam();
+	if (!m_Cam.Connect())
+	{
+		AfxMessageBox(_T("相机连接不成功"));
+		//return FALSE;
+	}
+	else
+	{
+		//加载参数文件
+		if (!m_Cam.LoadIni(0, "myconfig.Config"))
+		{
+			AfxMessageBox(_T("加载参数不成功"));
+		}
+	}
+
 	LoadColorParas(PATH_PARA);
 	return true;
 }
 
 bool UinitDll()
 {
+	m_Cam.DisConnect();
 	return true;
 }
 
@@ -384,22 +430,90 @@ int Run(char* pPath, char* pRes)
 {
 	//加载任务
 	g_vecTask.clear();
-	LoadTaskParas(PATH_TASK);
+	g_vecResult.clear();
+	if (!LoadTaskParas(PATH_TASK))
+	{
+		return ERR_TASK;
+	}
+	if (0 == g_vecTask.size())
+	{
+		return ERR_TASK;
+	}
 	//拍照
-	g_ImageSrc = imread("test2.jpg");
-	imshow("src", g_ImageSrc);
-	//waitKey();
+	//获取图像
+	tSdkFrame Image;
+	CameraSdkStatus st = m_Cam.GetImage(0, Image);
+	if (st != CAMERA_STATUS_SUCCESS)
+	{
+		return ERR_CAM;
+	}
+	cv::Mat tmp2(
+		cvSize(Image.head.iWidth, Image.head.iHeight),
+		Image.head.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? CV_8UC1 : CV_8UC3,
+		Image.pBuffer
+	);
+	//上下翻转
+	cv::flip(tmp2, tmp2, 0);
+	g_ImageSrc = tmp2;
+	//g_ImageSrc = imread("test2.jpg");
+	imwrite("src.jpg", g_ImageSrc);
+
+	//创建窗口
+	namedWindow(WIN_SRC_IMG, 0);
+	resizeWindow(WIN_SRC_IMG, 640, 480);
+	moveWindow(WIN_SRC_IMG, 0, 0);
+
+	namedWindow(WIN_ROI_IMG, 0);
+	resizeWindow(WIN_ROI_IMG, 320, 240);
+	moveWindow(WIN_ROI_IMG, 640, 0);
+
+	namedWindow(WIN_HIS_IMG, 0);
+	resizeWindow(WIN_HIS_IMG, 320, 240);
+	moveWindow(WIN_HIS_IMG, 640+320, 0);
+
+	namedWindow(WIN_BIN_IMG, 0);
+	resizeWindow(WIN_BIN_IMG, 320, 240);
+	moveWindow(WIN_BIN_IMG, 640+320+320, 0);
+
+	imshow(WIN_SRC_IMG, g_ImageSrc);
+
 	//根据任务识别颜色
 	vector<bool> vctRes;
+	bool bSuccess = true;
 	for (int i = 0; i < g_vecTask.size(); i++)
 	{
 		TaskPara TaskTmp = g_vecTask.at(i);
-		bool ret = JudgeColor(g_ImageSrc, TaskTmp);
-		pRes[i] = ret;
-		Sleep(1000);
+		ResultPara Result;
+		int ret = JudgeColor(g_ImageSrc, TaskTmp, Result);
+		if (ret == 1)
+			pRes[i] = 1;
+		else if (ret == 0)
+			pRes[i] = 0;
+		else
+			return ERR_COLOR;
+		bSuccess &= ret;
+		if(g_bDebug)
+			waitKey(1000);
 		vctRes.push_back(ret);
+		g_vecResult.push_back(Result);
 	}
-	//显示结果
+
+	//保存失败结果图像JPG
+	if (!bSuccess)
+	{
+		//时间命名
+		SYSTEMTIME curT;
+		GetLocalTime(&curT);
+		CString strPath;
+		strPath.Format("%d-%d-%d_%d-%d-%d.jpg", curT.wYear, curT.wMonth, curT.wDay, curT.wHour, curT.wMinute, curT.wSecond);
+		imwrite(strPath.GetBuffer(), g_ImageSrc);
+	}
+	//显示结果,图像，保存文本
+
+	//关闭窗口
+	cv::destroyAllWindows();
+
+
 
 	return 0;
 }

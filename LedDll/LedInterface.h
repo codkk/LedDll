@@ -3,10 +3,10 @@
 
 //错误码
 #define ERR_SUCCESS 0      //正常
-#define ERR_CAM 1			//相机问题
-#define ERR_COLOR 2			//颜色识别算法错误
-#define ERR_TASK 3			//加载任务失败
-#define ERR_OTHER 4			//其他
+#define ERR_CAM -1			//相机问题
+#define ERR_COLOR -2			//颜色识别算法错误
+#define ERR_TASK -3			//加载任务失败
+#define ERR_OTHER -4			//其他
 
 //函数： 执行功能
 //参数pPath: 任务文件路径
