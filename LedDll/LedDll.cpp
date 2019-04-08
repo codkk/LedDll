@@ -522,6 +522,7 @@ int Run(char* pPath, char* pRes)
 	//显示结果,图像，保存文本
 	//设置绘制文本的相关参数
 	FILE *pFile = fopen("result.txt", "w");
+	FILE *pFile2 = fopen("result_area.txt", "w");
 	for (int i = 0; i < g_vecTask.size(); i++)
 	{
 		std::string text = "UnKnown";
@@ -532,18 +533,21 @@ int Run(char* pPath, char* pRes)
 			{
 				text = "OK";
 				color = cv::Scalar(0, 255, 0);
-				fprintf(pFile, "OK,%.2lf\n", g_vecResult[i].Area);
+				fprintf(pFile, "OK\n");
+				fprintf(pFile2, "OK,%.2lf\n", g_vecResult[i].Area);
 			}
 			else
 			{
 				text = "NG";
 				color = cv::Scalar(0, 0, 255);
-				fprintf(pFile, "NG,%.2lf\n", g_vecResult[i].Area);
+				fprintf(pFile, "NG\n");
+				fprintf(pFile2, "NG,%.2lf\n", g_vecResult[i].Area);
 			}
 		}
 		else
 		{
-			fprintf(pFile, "Unknown, 0\n");
+			fprintf(pFile, "Unknown\n");
+			fprintf(pFile2, "Unknown, 0\n");
 		}
 		
 		int font_face = cv::FONT_HERSHEY_COMPLEX;
@@ -556,6 +560,7 @@ int Run(char* pPath, char* pRes)
 		cv::putText(g_ImageSrc, text, origin, font_face, font_scale, color, thickness, 8, 0);
 	}
 	fclose(pFile);
+	fclose(pFile2);
 	cv::imshow(WIN_SRC_IMG, g_ImageSrc);
 	cv::waitKey(1000);
 
