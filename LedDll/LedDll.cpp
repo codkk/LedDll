@@ -398,14 +398,16 @@ int  JudgeColor(Mat& ImgSrc, TaskPara& Task, ResultPara& result)
 
 
 
-bool InitDll()
+int InitDll()
 {
 	//
+	bool ret = true;
 	m_Cam.InitCam();
 	if (!m_Cam.Connect())
 	{
 		AfxMessageBox(_T("相机连接不成功"));
 		//return FALSE;
+		ret = false;
 	}
 	else
 	{
@@ -413,17 +415,23 @@ bool InitDll()
 		if (!m_Cam.LoadIni(0, "Para\\myconfig.Config"))
 		{
 			AfxMessageBox(_T("加载相机参数不成功"));
+			ret = false;
 		}
 	}
-
-	LoadColorParas(PATH_PARA);
-	return true;
+	if (!ret) return ERR_OTHER;
+	ret = LoadColorParas(PATH_PARA);
+	if (ret)
+		return ERR_SUCCESS;
+	else
+		return ERR_OTHER;
 }
 
-bool UinitDll()
+int UinitDll()
 {
-	m_Cam.DisConnect();
-	return true;
+	if (m_Cam.DisConnect())
+		return ERR_SUCCESS;
+	else
+		return ERR_CAM;
 }
 
 int Run(char* pPath, char* pRes)
