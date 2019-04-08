@@ -485,20 +485,27 @@ int Run(char* pPath, char* pRes)
 		TaskPara TaskTmp = g_vecTask.at(i);
 		ResultPara Result;
 		int ret = JudgeColor(g_ImageSrc, TaskTmp, Result);
+		bool bret = false;
 		if (ret == 1)
+		{
 			pRes[i] = 1;
+			bret = true;
+		}
 		else if (ret == 0)
+		{
 			pRes[i] = 0;
+			bret = false;
+		}
 		else
 		{
 			cv::destroyAllWindows();
 			return ERR_COLOR;
 		}
 
-		bSuccess &= ret;
+		bSuccess &= bret;
 		if(g_bDebug)
 			cv::waitKey(1000);
-		vctRes.push_back(ret);
+		vctRes.push_back(bret);
 		g_vecResult.push_back(Result);
 	}
 
