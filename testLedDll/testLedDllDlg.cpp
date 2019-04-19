@@ -43,6 +43,8 @@ BEGIN_MESSAGE_MAP(CtestLedDllDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON2, &CtestLedDllDlg::OnBnClickedButton2)
 	ON_BN_CLICKED(IDC_BUTTON4, &CtestLedDllDlg::OnBnClickedButton4)
 	ON_BN_CLICKED(IDC_BUTTON3, &CtestLedDllDlg::OnBnClickedButton3)
+	ON_BN_CLICKED(IDC_BUTTON5, &CtestLedDllDlg::OnBnClickedButton5)
+	ON_BN_CLICKED(IDC_BUTTON6, &CtestLedDllDlg::OnBnClickedButton6)
 END_MESSAGE_MAP()
 
 
@@ -71,6 +73,16 @@ BOOL CtestLedDllDlg::OnInitDialog()
 		AfxMessageBox(_T("function  load failed!\n"));
 		return false;
 	}
+	pRunDirect = (RunDirect)::GetProcAddress(dllHandle, "RunDirect");
+	if (pRunDirect == NULL) {
+		AfxMessageBox(_T("function  load failed!\n"));
+		return false;
+	}
+	pRunDirect2 = (RunDirect2)::GetProcAddress(dllHandle, "RunDirect2");
+	if (pRunDirect2 == NULL) {
+		AfxMessageBox(_T("function  load failed!\n"));
+		return false;
+	}
 	pInitFun = (initDll)::GetProcAddress(dllHandle, "InitDll");
 	if (pInitFun == NULL) {
 		AfxMessageBox(_T("function  load failed!\n"));
@@ -83,6 +95,11 @@ BOOL CtestLedDllDlg::OnInitDialog()
 	}
 	pGrabOneImage = (grabOneImage)::GetProcAddress(dllHandle, "GrabOneImage");
 	if (pGrabOneImage == NULL) {
+		AfxMessageBox(_T("function  load failed!\n"));
+		return false;
+	}
+	pGrabOneImageDrect = (grabOneImage)::GetProcAddress(dllHandle, "GrabOneImageDirect");
+	if (pGrabOneImageDrect == NULL) {
 		AfxMessageBox(_T("function  load failed!\n"));
 		return false;
 	}
@@ -145,7 +162,7 @@ void CtestLedDllDlg::OnBnClickedButton1()
 
 void CtestLedDllDlg::OnBnClickedButton2()
 {
-	if (pInitFun())
+	if (pInitFun() == 0)
 	{
 		AfxMessageBox("DONE");
 	}
@@ -165,4 +182,30 @@ void CtestLedDllDlg::OnBnClickedButton4()
 void CtestLedDllDlg::OnBnClickedButton3()
 {
 	pUinitFun();
+}
+
+
+void CtestLedDllDlg::OnBnClickedButton5()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	if (pGrabOneImageDrect() == 0)
+	{
+		AfxMessageBox("DONE");
+	}
+	else
+	{
+		AfxMessageBox("FAIL");
+	}
+}
+
+
+void CtestLedDllDlg::OnBnClickedButton6()
+{
+	char res[20];
+	memset(res, 0, 20);
+	std::string strroot = "E:\\LedDll\\testLedDll\\";
+	char p[1024] = { 0 };
+	memset(p, '\0', 1024);
+	strcpy_s(p, strroot.c_str());
+	pRunDirect2(p,"E:\\LedDll\\testLedDll\\Task\\Task.ini", res);
 }

@@ -7,6 +7,7 @@
 #include "opencv2\opencv.hpp"
 #include <vector>
 #include "Class\Ini.h"
+#include "EasyLog.h"
 using namespace cv;
 using namespace std;
 #ifdef _DEBUG
@@ -162,6 +163,8 @@ typedef struct ResultPara {
 Mat g_ImageSrc;	//原图
 Mat g_ImageHue; //色调0-180
 MVcamera m_Cam;	//相机1
+//MyLogger * m_myLoger = MyLogger::getInstance();
+std::string g_strRootPath;
 
 //算法相关
 
@@ -173,11 +176,17 @@ vector<TaskPara> g_vecTask;
 vector<ResultPara> g_vecResult;
 ////////////////////////////////////
 //加载标准参数
-bool LoadColorParas(char* path)
+bool LoadColorParas(const char* path)
 {
+	EasyLog::Inst()->Log("LoadColorParas:");
+	EasyLog::Inst()->Log(path);
 	CIni file;
 	bool ret = file.Read(path);
-	if (!ret) return false;
+	if (!ret)
+	{
+		EasyLog::Inst()->Log("LoadColorParas: ret false");
+		return false;
+	}
 
 	//
 	g_vecPara.clear();
@@ -201,16 +210,23 @@ bool LoadColorParas(char* path)
 		file.GetValue(node, SUB_CLOSING_SZ, para.ClosingSize);
 		g_vecPara.push_back(para);
 	}
-
+	EasyLog::Inst()->Log("LoadColorParas: ret true");
 	return true;
 }
 
 //加载任务列表
 bool LoadTaskParas(char* path)
 {
+	EasyLog::Inst()->Log("LoadTaskParas：");
+	EasyLog::Inst()->Log(path);
 	CIni file;
 	bool ret = file.Read(path);
-	if (!ret) return false;
+	if (!ret)
+	{
+		EasyLog::Inst()->Log("LoadTaskParas：ret false");
+		return false;
+	}
+
 
 	//
 	g_vecTask.clear();
@@ -219,6 +235,7 @@ bool LoadTaskParas(char* path)
 	file.GetValue(NODE_TASK_SETTING, SUB_TASK_NUM, num);
 	for (int i = 0; i < num; i++)
 	{
+		EasyLog::Inst()->Log("加载一个");
 		//
 		TaskPara task;
 		char node[1024] = { 0 };
@@ -233,7 +250,7 @@ bool LoadTaskParas(char* path)
 		file.GetValue(node, SUB_TASK_LFT, task.Left);
 		g_vecTask.push_back(task);
 	}
-
+	EasyLog::Inst()->Log("LoadTaskParas：ret true");
 	return true;
 }
 
@@ -288,7 +305,7 @@ bool DrawHist(Mat& src, Mat& dst)
 //
 int  JudgeColor(Mat& ImgSrc, TaskPara& Task, ResultPara& result)
 {
-	
+	EasyLog::Inst()->Log("JudgeColor:start");
 	//0. 切图
 	cv::Rect roi = cv::Rect(Task.Left, Task.Top, Task.Right-Task.Left, Task.Bottom-Task.Top);
 	Mat roiImg = ImgSrc(roi);
@@ -310,7 +327,7 @@ int  JudgeColor(Mat& ImgSrc, TaskPara& Task, ResultPara& result)
 	channels[1] = Mat::zeros(dstImage.size(), CV_8UC1);
 	channels[2] = Mat::zeros(dstImage.size(), CV_8UC1);
 	Mat imageHue;
-	split(dstImage, channels);
+	cv::split(dstImage, channels);
 	imageHue = channels[0];
 
 	//2. 色调直方图(可不用)
@@ -333,8 +350,11 @@ int  JudgeColor(Mat& ImgSrc, TaskPara& Task, ResultPara& result)
 			break;
 		}
 	}
-	if (!flag) return ERR_COLOR;
-
+	if (!flag)
+	{
+		EasyLog::Inst()->Log("JudgeColor:ret ERR_COLOR 任务里面的颜色类型不存在");
+		return ERR_COLOR;
+	}
 	ColorPara stdPara = g_vecPara.at(idx);
 	min = stdPara.valMin;
 	max = stdPara.valMax;
@@ -360,7 +380,7 @@ int  JudgeColor(Mat& ImgSrc, TaskPara& Task, ResultPara& result)
 	}
 	//腐蚀
 	Mat element = getStructuringElement(MORPH_RECT, Size(stdPara.ClosingSize, stdPara.ClosingSize));
-	erode(binImg, binImg, element);
+	cv::erode(binImg, binImg, element);
 	cv::imshow(WIN_BIN_IMG, binImg);
 	//waitKey(0);
 
@@ -369,7 +389,7 @@ int  JudgeColor(Mat& ImgSrc, TaskPara& Task, ResultPara& result)
 	vector<Vec4i> hierarchy;
 	RNG rng;
 	double area = 0.0;
-	findContours(binImg, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+	cv::findContours(binImg, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
 	/// Draw contours
 	Mat drawing = Mat::zeros(binImg.size(), CV_8UC3);
 	for (int i = 0; i< contours.size(); i++)
@@ -383,15 +403,17 @@ int  JudgeColor(Mat& ImgSrc, TaskPara& Task, ResultPara& result)
 	if (area >= stdPara.AreaThr)
 	{
 		result.bOk = true;
+		EasyLog::Inst()->Log("JudgeColor:ret OK");
 		return 1;
 	}
 	else
 	{
 		result.bOk = false;
+		EasyLog::Inst()->Log("JudgeColor:ret NG");
 		return 0;
 	}
 
-	
+	EasyLog::Inst()->Log("JudgeColor:ret ERR_COLOR 不可能到这里");
 	return ERR_COLOR;
 }
 
@@ -400,51 +422,88 @@ int  JudgeColor(Mat& ImgSrc, TaskPara& Task, ResultPara& result)
 
 int InitDll()
 {
+	//std::string str = "InitDll:Start";
+	//char c[] = "InitDll:Start";
+	////LOG4CPLUS_DEBUG(m_myLoger->logger, c);
 	//
+	EasyLog::Inst()->Log("InitDll:start");
 	bool ret = true;
 	m_Cam.InitCam();
+	EasyLog::Inst()->Log("InitDll:相机连接...");
 	if (!m_Cam.Connect())
 	{
 		AfxMessageBox(_T("相机连接不成功"));
 		//return FALSE;
+		EasyLog::Inst()->Log("InitDll:相机连接不成功");
 		ret = false;
+		//LOG4CPLUS_INFO(m_myLoger->logger, "InitDll:Ret:相机连接不成功");
 	}
 	else
 	{
 		//加载参数文件
-		if (!m_Cam.LoadIni(0, "Para\\myconfig.Config"))
+		std::string str = g_strRootPath + "Para\\myconfig.Config";
+		char p[1024] = { 0 };
+		memset(p, '\0', 1024);
+		strcpy(p, str.c_str());
+		EasyLog::Inst()->Log("InitDll:加载相机参数...");
+		if (!m_Cam.LoadIni(0, p))
 		{
 			AfxMessageBox(_T("加载相机参数不成功"));
+			EasyLog::Inst()->Log("InitDll:加载相机参数不成功");
 			ret = false;
+			//LOG4CPLUS_INFO(m_myLoger->logger, "InitDll:Ret:加载相机参数不成功");
 		}
 	}
 	if (!ret) return ERR_OTHER;
-	ret = LoadColorParas(PATH_PARA);
+	std::string str2 = g_strRootPath + PATH_PARA;
+	ret = LoadColorParas(str2.c_str());
 	if (ret)
+	{
+		//LOG4CPLUS_INFO(m_myLoger->logger, "InitDll:Ret:Sucess");
+		EasyLog::Inst()->Log("InitDll:ret ERR_SUCCESS");
 		return ERR_SUCCESS;
+	}
 	else
+	{
+		//LOG4CPLUS_INFO(m_myLoger->logger, "InitDll:Ret:加载颜色标准参数不成功");
+		EasyLog::Inst()->Log("InitDll:ret ERR_OTHER");
 		return ERR_OTHER;
+	}
+
 }
 
 int UinitDll()
 {
+	EasyLog::Inst()->Log("UinitDll:start");
 	if (m_Cam.DisConnect())
+	{
+		EasyLog::Inst()->Log("UinitDll:ret ERR_SUCCESS");
 		return ERR_SUCCESS;
+	}
 	else
+	{
+		EasyLog::Inst()->Log("UinitDll:ret ERR_CAM");
 		return ERR_CAM;
+	}
+
 }
 
 int Run(char* pPath, char* pRes)
 {
+	EasyLog::Inst()->Log("Run:start");
 	//加载任务
 	g_vecTask.clear();
 	g_vecResult.clear();
-	if (!LoadTaskParas(PATH_TASK))
+	if (!LoadTaskParas(pPath))
 	{
+		//LOG4CPLUS_INFO(m_myLoger->logger, "Run:Ret:加载任务参数不成功");
+		EasyLog::Inst()->Log("Run:ret 加载任务参数不成功");
 		return ERR_TASK;
 	}
 	if (0 == g_vecTask.size())
 	{
+		//LOG4CPLUS_INFO(m_myLoger->logger, "Run:Ret:加载任务参数不成功:任务个数为空");
+		EasyLog::Inst()->Log("Run:ret 加载任务参数不成功:任务个数为空");
 		return ERR_TASK;
 	}
 	//拍照
@@ -453,6 +512,8 @@ int Run(char* pPath, char* pRes)
 	CameraSdkStatus st = m_Cam.GetImage(0, Image);
 	if (st != CAMERA_STATUS_SUCCESS)
 	{
+		//LOG4CPLUS_INFO(m_myLoger->logger, "Run:Ret:相机拍照错误");
+		EasyLog::Inst()->Log("Run:ret 相机拍照错误");
 		return ERR_CAM;
 	}
 	cv::Mat tmp2(
@@ -490,6 +551,8 @@ int Run(char* pPath, char* pRes)
 	bool bSuccess = true;
 	for (int i = 0; i < g_vecTask.size(); i++)
 	{
+		//LOG4CPLUS_INFO(m_myLoger->logger, "Run:根据任务识别一次");
+		EasyLog::Inst()->Log("Run: 根据任务识别一次");
 		TaskPara TaskTmp = g_vecTask.at(i);
 		ResultPara Result;
 		int ret = JudgeColor(g_ImageSrc, TaskTmp, Result);
@@ -497,16 +560,20 @@ int Run(char* pPath, char* pRes)
 		if (ret == 1)
 		{
 			pRes[i] = 1;
+			EasyLog::Inst()->Log("Run: OK");
 			bret = true;
 		}
 		else if (ret == 0)
 		{
 			pRes[i] = 0;
+			EasyLog::Inst()->Log("Run: NG");
 			bret = false;
 		}
 		else
 		{
 			cv::destroyAllWindows();
+			//LOG4CPLUS_INFO(m_myLoger->logger, "Run:Ret:颜色识别发生错误");
+			EasyLog::Inst()->Log("Run: ret 颜色识别发生错误");
 			return ERR_COLOR;
 		}
 
@@ -520,6 +587,8 @@ int Run(char* pPath, char* pRes)
 	//保存失败结果图像JPG
 	if (!bSuccess)
 	{
+		//LOG4CPLUS_INFO(m_myLoger->logger, "Run:保存识别失败图片");
+		EasyLog::Inst()->Log("Run: 保存识别失败图片");
 		//时间命名
 		SYSTEMTIME curT;
 		GetLocalTime(&curT);
@@ -529,6 +598,7 @@ int Run(char* pPath, char* pRes)
 	}
 	//显示结果,图像，保存文本
 	//设置绘制文本的相关参数
+	//LOG4CPLUS_INFO(m_myLoger->logger, "Run:保存结果到result.txt");
 	FILE *pFile = fopen("result.txt", "w");
 	FILE *pFile2 = fopen("result_area.txt", "w");
 	for (int i = 0; i < g_vecTask.size(); i++)
@@ -574,7 +644,8 @@ int Run(char* pPath, char* pRes)
 
 	//关闭窗口
 	cv::destroyAllWindows();
-
+	//LOG4CPLUS_INFO(m_myLoger->logger, "Run:Ret:Success");
+	EasyLog::Inst()->Log("Run: ret ERR_SUCCESS");
 	return ERR_SUCCESS;
 }
 
@@ -597,5 +668,468 @@ int GrabOneImage()
 	//g_ImageSrc = tmp2;
 	//g_ImageSrc = imread("test2.jpg");
 	imwrite("GrabOneImg.jpg", tmp2);
+	return ERR_SUCCESS;
+}
+
+int GrabOneImageDirect()
+{
+	EasyLog::Inst()->Log("GrabOneImageDirect:start");
+
+	//初始化
+	int ret1 = InitDll();
+	if (ret1 != ERR_SUCCESS)
+	{
+		EasyLog::Inst()->Log("GrabOneImageDirect:ret ERR");
+		return ret1;
+	}
+
+	//获取图像
+	//Sleep(1000);
+	tSdkFrame Image;
+	CameraSdkStatus st = m_Cam.GetImage(0, Image);
+	if (st != CAMERA_STATUS_SUCCESS)
+	{
+		EasyLog::Inst()->Log("GrabOneImageDirect:ret 相机获取图像不成功");
+		return ERR_CAM;
+	}
+	cv::Mat tmp2(
+		cvSize(Image.head.iWidth, Image.head.iHeight),
+		Image.head.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? CV_8UC1 : CV_8UC3,
+		Image.pBuffer
+	);
+	//上下翻转
+	cv::flip(tmp2, tmp2, 0);
+	//g_ImageSrc = tmp2;
+	//g_ImageSrc = imread("test2.jpg");
+	imwrite("GrabOneImg.jpg", tmp2);
+	//Sleep(1000);
+	//反初始化
+	ret1 = UinitDll();
+	if (ret1 != ERR_SUCCESS)
+	{
+		EasyLog::Inst()->Log("GrabOneImageDirect:ret ERR");
+		return ret1;
+	}
+
+
+	EasyLog::Inst()->Log("GrabOneImageDirect:ret ERR_SUCCESS");
+	return ERR_SUCCESS;
+}
+
+int GrabOneImageDirect2(char * rootpath)
+{
+	EasyLog::Inst()->Log("GrabOneImageDirect:start");
+	g_strRootPath = rootpath;
+	//初始化
+	int ret1 = InitDll();
+	if (ret1 != ERR_SUCCESS)
+	{
+		EasyLog::Inst()->Log("GrabOneImageDirect:ret ERR");
+		return ret1;
+	}
+
+	//获取图像
+	//Sleep(1000);
+	tSdkFrame Image;
+	CameraSdkStatus st = m_Cam.GetImage(0, Image);
+	if (st != CAMERA_STATUS_SUCCESS)
+	{
+		EasyLog::Inst()->Log("GrabOneImageDirect:ret 相机获取图像不成功");
+		return ERR_CAM;
+	}
+	cv::Mat tmp2(
+		cvSize(Image.head.iWidth, Image.head.iHeight),
+		Image.head.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? CV_8UC1 : CV_8UC3,
+		Image.pBuffer
+	);
+	//上下翻转
+	cv::flip(tmp2, tmp2, 0);
+	//g_ImageSrc = tmp2;
+	//g_ImageSrc = imread("test2.jpg");
+	std::string str = g_strRootPath + "GrabOneImg.jpg";
+	imwrite(str.c_str(), tmp2);
+	//Sleep(1000);
+	//反初始化
+	ret1 = UinitDll();
+	if (ret1 != ERR_SUCCESS)
+	{
+		EasyLog::Inst()->Log("GrabOneImageDirect:ret ERR");
+		return ret1;
+	}
+
+
+	EasyLog::Inst()->Log("GrabOneImageDirect:ret ERR_SUCCESS");
+	return ERR_SUCCESS;
+}
+
+int RunDirect(char * pPath, char * pRes)
+{
+	EasyLog::Inst()->Log("RunDirect:start*");
+	//初始化
+	int ret1 = InitDll();
+	if (ret1 != ERR_SUCCESS)
+	{
+		EasyLog::Inst()->Log("RunDirect:ret ERR");
+		return ret1;
+	}
+
+
+	//加载任务
+	g_vecTask.clear();
+	g_vecResult.clear();
+	if (!LoadTaskParas(pPath))
+	{
+		//LOG4CPLUS_INFO(m_myLoger->logger, "Run:Ret:加载任务参数不成功");
+		EasyLog::Inst()->Log("RunDirect:ret 加载任务参数不成功");
+		return ERR_TASK;
+	}
+	if (0 == g_vecTask.size())
+	{
+		//LOG4CPLUS_INFO(m_myLoger->logger, "Run:Ret:加载任务参数不成功:任务个数为空");
+		EasyLog::Inst()->Log("RunDirect:ret 加载任务参数不成功:任务个数为空");
+		return ERR_TASK;
+	}
+	//拍照
+	//获取图像
+	tSdkFrame Image;
+	CameraSdkStatus st = m_Cam.GetImage(0, Image);
+	if (st != CAMERA_STATUS_SUCCESS)
+	{
+		//LOG4CPLUS_INFO(m_myLoger->logger, "Run:Ret:相机拍照错误");
+		EasyLog::Inst()->Log("RunDirect:ret 相机拍照错误");
+		return ERR_CAM;
+	}
+	cv::Mat tmp2(
+		cvSize(Image.head.iWidth, Image.head.iHeight),
+		Image.head.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? CV_8UC1 : CV_8UC3,
+		Image.pBuffer
+	);
+	//上下翻转
+	cv::flip(tmp2, tmp2, 0);
+	g_ImageSrc = tmp2;
+	//g_ImageSrc = imread("test2.jpg");
+	cv::imwrite("src.jpg", g_ImageSrc);
+
+	//创建窗口
+	cv::namedWindow(WIN_SRC_IMG, 0);
+	cv::resizeWindow(WIN_SRC_IMG, 640, 480);
+	cv::moveWindow(WIN_SRC_IMG, 0, 0);
+
+	cv::namedWindow(WIN_ROI_IMG, 0);
+	cv::resizeWindow(WIN_ROI_IMG, 320, 240);
+	cv::moveWindow(WIN_ROI_IMG, 640, 0);
+
+	cv::namedWindow(WIN_HIS_IMG, 0);
+	cv::resizeWindow(WIN_HIS_IMG, 320, 240);
+	cv::moveWindow(WIN_HIS_IMG, 640 + 320, 0);
+
+	cv::namedWindow(WIN_BIN_IMG, 0);
+	cv::resizeWindow(WIN_BIN_IMG, 320, 240);
+	cv::moveWindow(WIN_BIN_IMG, 640 + 320 + 320, 0);
+
+	cv::imshow(WIN_SRC_IMG, g_ImageSrc);
+
+	//根据任务识别颜色
+	vector<bool> vctRes;
+	bool bSuccess = true;
+	for (int i = 0; i < g_vecTask.size(); i++)
+	{
+		//LOG4CPLUS_INFO(m_myLoger->logger, "Run:根据任务识别一次");
+		TaskPara TaskTmp = g_vecTask.at(i);
+		ResultPara Result;
+		int ret = JudgeColor(g_ImageSrc, TaskTmp, Result);
+		bool bret = false;
+		if (ret == 1)
+		{
+			pRes[i] = 1;
+			//LOG4CPLUS_INFO(m_myLoger->logger, "Run:OK");
+			EasyLog::Inst()->Log("RunDirect:OK");
+			bret = true;
+		}
+		else if (ret == 0)
+		{
+			pRes[i] = 0;
+			EasyLog::Inst()->Log("RunDirect:NG");
+			bret = false;
+		}
+		else
+		{
+			cv::destroyAllWindows();
+			//LOG4CPLUS_INFO(m_myLoger->logger, "Run:Ret:颜色识别发生错误");
+			EasyLog::Inst()->Log("RunDirect:ret 颜色识别发生错误");
+			return ERR_COLOR;
+		}
+
+		bSuccess &= bret;
+		if (g_bDebug)
+			cv::waitKey(1000);
+		vctRes.push_back(bret);
+		g_vecResult.push_back(Result);
+	}
+
+	//保存失败结果图像JPG
+	if (!bSuccess)
+	{
+		//LOG4CPLUS_INFO(m_myLoger->logger, "Run:保存识别失败图片");
+		//时间命名
+		SYSTEMTIME curT;
+		GetLocalTime(&curT);
+		CString strPath;
+		strPath.Format("%d-%d-%d_%d-%d-%d.jpg", curT.wYear, curT.wMonth, curT.wDay, curT.wHour, curT.wMinute, curT.wSecond);
+		cv::imwrite(strPath.GetBuffer(), g_ImageSrc);
+	}
+	//显示结果,图像，保存文本
+	//设置绘制文本的相关参数
+	//LOG4CPLUS_INFO(m_myLoger->logger, "Run:保存结果到result.txt");
+	FILE *pFile = fopen("result.txt", "w");
+	FILE *pFile2 = fopen("result_area.txt", "w");
+	for (int i = 0; i < g_vecTask.size(); i++)
+	{
+		std::string text = "UnKnown";
+		cv::Scalar color = cv::Scalar(255, 255, 0);
+		if (i < g_vecResult.size())
+		{
+			if (g_vecResult[i].bOk)
+			{
+				text = "OK";
+				color = cv::Scalar(0, 255, 0);
+				fprintf_s(pFile, "OK\n");
+				fprintf_s(pFile2, "OK,%.2lf\n", g_vecResult[i].Area);
+			}
+			else
+			{
+				text = "NG";
+				color = cv::Scalar(0, 0, 255);
+				fprintf_s(pFile, "NG\n");
+				fprintf_s(pFile2, "NG,%.2lf\n", g_vecResult[i].Area);
+			}
+		}
+		else
+		{
+			fprintf_s(pFile, "Unknown\n");
+			fprintf_s(pFile2, "Unknown, 0\n");
+		}
+
+		int font_face = cv::FONT_HERSHEY_COMPLEX;
+		double font_scale = 4;
+		int thickness = 4;
+		int baseline;
+		cv::Point origin;
+		origin.x = (g_vecTask[i].Left + g_vecTask[i].Right) / 2;
+		origin.y = (g_vecTask[i].Top + g_vecTask[i].Bottom) / 2;
+		cv::putText(g_ImageSrc, text, origin, font_face, font_scale, color, thickness, 8, 0);
+	}
+	fclose(pFile);
+	fclose(pFile2);
+	cv::imshow(WIN_SRC_IMG, g_ImageSrc);
+	cv::waitKey(1000);
+
+	//关闭窗口
+	cv::destroyAllWindows();
+	//LOG4CPLUS_INFO(m_myLoger->logger, "Run:Ret:Success");
+	
+	//反初始化
+	ret1 = UinitDll();
+	if (ret1 != ERR_SUCCESS)
+	{
+		EasyLog::Inst()->Log("RunDirect:ret ERR");
+		return ret1;
+	}
+
+
+	EasyLog::Inst()->Log("RunDirect:ret ERR_SUCCESS");
+	return ERR_SUCCESS;
+}
+
+int RunDirect2(char* rootpath, char * pPath, char * pRes)
+{
+	EasyLog::Inst()->Log("RunDirect:start*");
+
+	g_strRootPath = rootpath;
+	//初始化
+	int ret1 = InitDll();
+	if (ret1 != ERR_SUCCESS)
+	{
+		EasyLog::Inst()->Log("RunDirect:ret ERR");
+		return ret1;
+	}
+
+
+	//加载任务
+	g_vecTask.clear();
+	g_vecResult.clear();
+	if (!LoadTaskParas(pPath))
+	{
+		//LOG4CPLUS_INFO(m_myLoger->logger, "Run:Ret:加载任务参数不成功");
+		EasyLog::Inst()->Log("RunDirect:ret 加载任务参数不成功");
+		UinitDll();
+		return ERR_TASK;
+	}
+	if (0 == g_vecTask.size())
+	{
+		//LOG4CPLUS_INFO(m_myLoger->logger, "Run:Ret:加载任务参数不成功:任务个数为空");
+		EasyLog::Inst()->Log("RunDirect:ret 加载任务参数不成功:任务个数为空");
+		UinitDll();
+		return ERR_TASK;
+	}
+	//拍照
+	//获取图像
+	tSdkFrame Image;
+	CameraSdkStatus st = m_Cam.GetImage(0, Image);
+	if (st != CAMERA_STATUS_SUCCESS)
+	{
+		//LOG4CPLUS_INFO(m_myLoger->logger, "Run:Ret:相机拍照错误");
+		EasyLog::Inst()->Log("RunDirect:ret 相机拍照错误");
+		UinitDll();
+		return ERR_CAM;
+	}
+	cv::Mat tmp2(
+		cvSize(Image.head.iWidth, Image.head.iHeight),
+		Image.head.uiMediaType == CAMERA_MEDIA_TYPE_MONO8 ? CV_8UC1 : CV_8UC3,
+		Image.pBuffer
+	);
+	//上下翻转
+	cv::flip(tmp2, tmp2, 0);
+	g_ImageSrc = tmp2;
+	//g_ImageSrc = imread("test2.jpg");
+	cv::imwrite("src.jpg", g_ImageSrc);
+
+	//创建窗口
+	cv::namedWindow(WIN_SRC_IMG, 0);
+	cv::resizeWindow(WIN_SRC_IMG, 640, 480);
+	cv::moveWindow(WIN_SRC_IMG, 0, 0);
+
+	cv::namedWindow(WIN_ROI_IMG, 0);
+	cv::resizeWindow(WIN_ROI_IMG, 320, 240);
+	cv::moveWindow(WIN_ROI_IMG, 640, 0);
+
+	cv::namedWindow(WIN_HIS_IMG, 0);
+	cv::resizeWindow(WIN_HIS_IMG, 320, 240);
+	cv::moveWindow(WIN_HIS_IMG, 640 + 320, 0);
+
+	cv::namedWindow(WIN_BIN_IMG, 0);
+	cv::resizeWindow(WIN_BIN_IMG, 320, 240);
+	cv::moveWindow(WIN_BIN_IMG, 640 + 320 + 320, 0);
+
+	cv::imshow(WIN_SRC_IMG, g_ImageSrc);
+
+	//根据任务识别颜色
+	vector<bool> vctRes;
+	bool bSuccess = true;
+	for (int i = 0; i < g_vecTask.size(); i++)
+	{
+		//LOG4CPLUS_INFO(m_myLoger->logger, "Run:根据任务识别一次");
+		TaskPara TaskTmp = g_vecTask.at(i);
+		ResultPara Result;
+		int ret = JudgeColor(g_ImageSrc, TaskTmp, Result);
+		bool bret = false;
+		if (ret == 1)
+		{
+			pRes[i] = 1;
+			//LOG4CPLUS_INFO(m_myLoger->logger, "Run:OK");
+			EasyLog::Inst()->Log("RunDirect:OK");
+			bret = true;
+		}
+		else if (ret == 0)
+		{
+			pRes[i] = 0;
+			EasyLog::Inst()->Log("RunDirect:NG");
+			bret = false;
+		}
+		else
+		{
+			cv::destroyAllWindows();
+			//LOG4CPLUS_INFO(m_myLoger->logger, "Run:Ret:颜色识别发生错误");
+			EasyLog::Inst()->Log("RunDirect:ret 颜色识别发生错误");
+			UinitDll();
+			return ERR_COLOR;
+		}
+
+		bSuccess &= bret;
+		if (g_bDebug)
+			cv::waitKey(1000);
+		vctRes.push_back(bret);
+		g_vecResult.push_back(Result);
+	}
+
+	//保存失败结果图像JPG
+	if (!bSuccess)
+	{
+		//LOG4CPLUS_INFO(m_myLoger->logger, "Run:保存识别失败图片");
+		//时间命名
+		SYSTEMTIME curT;
+		GetLocalTime(&curT);
+		CString strPath;
+		strPath.Format("%d-%d-%d_%d-%d-%d.jpg", curT.wYear, curT.wMonth, curT.wDay, curT.wHour, curT.wMinute, curT.wSecond);
+		
+		std::string str;
+		char p[1024];
+		memset(p, '\0', 1024);
+		sprintf_s(p, "Failed\\%d-%d-%d_%d-%d-%d.jpg", curT.wYear, curT.wMonth, curT.wDay, curT.wHour, curT.wMinute, curT.wSecond);
+		str = g_strRootPath +p;
+		cv::imwrite(str, g_ImageSrc);
+	}
+	//显示结果,图像，保存文本
+	//设置绘制文本的相关参数
+	//LOG4CPLUS_INFO(m_myLoger->logger, "Run:保存结果到result.txt");
+	std::string strResult = g_strRootPath + "result.txt";
+	std::string strResultArea = g_strRootPath + "result_area.txt";
+	FILE *pFile = fopen(strResult.c_str(), "w");
+	FILE *pFile2 = fopen(strResultArea.c_str(), "w");
+	for (int i = 0; i < g_vecTask.size(); i++)
+	{
+		std::string text = "UnKnown";
+		cv::Scalar color = cv::Scalar(255, 255, 0);
+		if (i < g_vecResult.size())
+		{
+			if (g_vecResult[i].bOk)
+			{
+				text = "OK";
+				color = cv::Scalar(0, 255, 0);
+				fprintf_s(pFile, "OK\n");
+				fprintf_s(pFile2, "OK,%.2lf\n", g_vecResult[i].Area);
+			}
+			else
+			{
+				text = "NG";
+				color = cv::Scalar(0, 0, 255);
+				fprintf_s(pFile, "NG\n");
+				fprintf_s(pFile2, "NG,%.2lf\n", g_vecResult[i].Area);
+			}
+		}
+		else
+		{
+			fprintf_s(pFile, "Unknown\n");
+			fprintf_s(pFile2, "Unknown, 0\n");
+		}
+
+		int font_face = cv::FONT_HERSHEY_COMPLEX;
+		double font_scale = 4;
+		int thickness = 4;
+		int baseline;
+		cv::Point origin;
+		origin.x = (g_vecTask[i].Left + g_vecTask[i].Right) / 2;
+		origin.y = (g_vecTask[i].Top + g_vecTask[i].Bottom) / 2;
+		cv::putText(g_ImageSrc, text, origin, font_face, font_scale, color, thickness, 8, 0);
+	}
+	fclose(pFile);
+	fclose(pFile2);
+	cv::imshow(WIN_SRC_IMG, g_ImageSrc);
+	cv::waitKey(1000);
+
+	//关闭窗口
+	cv::destroyAllWindows();
+	//LOG4CPLUS_INFO(m_myLoger->logger, "Run:Ret:Success");
+
+	//反初始化
+	ret1 = UinitDll();
+	if (ret1 != ERR_SUCCESS)
+	{
+		EasyLog::Inst()->Log("RunDirect:ret ERR");
+		return ret1;
+	}
+
+
+	EasyLog::Inst()->Log("RunDirect:ret ERR_SUCCESS");
 	return ERR_SUCCESS;
 }

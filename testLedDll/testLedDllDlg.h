@@ -6,9 +6,12 @@
 
 //typedef bool(*Judge)(Mat Image, int Type);
 typedef int (*Run)(char* pPath, char* pRes);
+typedef int(*RunDirect)(char* pPath, char* pRes);
+typedef int(*RunDirect2)(char* pRootPath, char* pPath, char* pRes);
 typedef bool(*initDll)();
 typedef bool(*UinitDll)();
 typedef int(*grabOneImage)();
+typedef int(*grabOneImageDrect)(); //连接 -》 拍照 -》 断开连接
 // CtestLedDllDlg 对话框
 class CtestLedDllDlg : public CDialogEx
 {
@@ -43,8 +46,13 @@ public:
 	Run pRun;
 	grabOneImage pGrabOneImage;
 	UinitDll pUinitFun;
+	grabOneImageDrect pGrabOneImageDrect;
+	RunDirect pRunDirect;
+	RunDirect2 pRunDirect2;
 	HMODULE dllHandle;   //图像处理库的句柄
 	afx_msg void OnBnClickedButton2();
 	afx_msg void OnBnClickedButton4();
 	afx_msg void OnBnClickedButton3();
+	afx_msg void OnBnClickedButton5();
+	afx_msg void OnBnClickedButton6();
 };

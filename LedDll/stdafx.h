@@ -38,7 +38,7 @@
 
 
 #include "MVcamera.h"		//Ïà»úÄ£¿é
-#ifdef _X64
+#ifndef WIN32
 #ifdef _DEBUG
 #pragma comment(lib,"..\\x64\\Debug\\CameraDll.lib")
 #else
