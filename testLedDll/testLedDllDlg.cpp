@@ -18,11 +18,14 @@
 
 CtestLedDllDlg::CtestLedDllDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(IDD_TESTLEDDLL_DIALOG, pParent)
+	, m_streditRoot(_T("E:\\LedDll\\testLedDll\\"))
+	, m_streditIni(_T("E:\\LedDll\\testLedDll\\Task\\Task.ini"))
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 	//pJudge = NULL;
 	pInitFun = NULL;
 	pRun = NULL;
+	pRunDirect3 = NULL;
 }
 
 CtestLedDllDlg::~CtestLedDllDlg()
@@ -33,6 +36,8 @@ CtestLedDllDlg::~CtestLedDllDlg()
 void CtestLedDllDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+	DDX_Text(pDX, IDC_EDIT1, m_streditRoot);
+	DDX_Text(pDX, IDC_EDIT2, m_streditIni);
 }
 
 BEGIN_MESSAGE_MAP(CtestLedDllDlg, CDialogEx)
@@ -45,6 +50,7 @@ BEGIN_MESSAGE_MAP(CtestLedDllDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON3, &CtestLedDllDlg::OnBnClickedButton3)
 	ON_BN_CLICKED(IDC_BUTTON5, &CtestLedDllDlg::OnBnClickedButton5)
 	ON_BN_CLICKED(IDC_BUTTON6, &CtestLedDllDlg::OnBnClickedButton6)
+	ON_BN_CLICKED(IDC_BUTTON7, &CtestLedDllDlg::OnBnClickedButton7)
 END_MESSAGE_MAP()
 
 
@@ -83,6 +89,11 @@ BOOL CtestLedDllDlg::OnInitDialog()
 		AfxMessageBox(_T("function  load failed!\n"));
 		return false;
 	}
+	pRunDirect3 = (RunDirect3)::GetProcAddress(dllHandle, "RunDirect3");
+	if (pRunDirect3 == NULL) {
+		AfxMessageBox(_T("function  load failed!\n"));
+		return false;
+	}
 	pInitFun = (initDll)::GetProcAddress(dllHandle, "InitDll");
 	if (pInitFun == NULL) {
 		AfxMessageBox(_T("function  load failed!\n"));
@@ -98,12 +109,26 @@ BOOL CtestLedDllDlg::OnInitDialog()
 		AfxMessageBox(_T("function  load failed!\n"));
 		return false;
 	}
-	pGrabOneImageDrect = (grabOneImage)::GetProcAddress(dllHandle, "GrabOneImageDirect");
+	pGrabOneImageDrect = (grabOneImageDrect)::GetProcAddress(dllHandle, "GrabOneImageDirect");
 	if (pGrabOneImageDrect == NULL) {
 		AfxMessageBox(_T("function  load failed!\n"));
 		return false;
 	}
-
+	pGrabOneImageDrect2 = (grabOneImageDrect2)::GetProcAddress(dllHandle, "GrabOneImageDirect2");
+	if (pGrabOneImageDrect2 == NULL) {
+		AfxMessageBox(_T("function  load failed!\n"));
+		return false;
+	}
+	pDectectNum = (dectectNum)::GetProcAddress(dllHandle, "DetectNum");
+	if (pDectectNum == NULL) {
+		AfxMessageBox(_T("function  load failed!\n"));
+		return false;
+	}
+	pShowHist = (showHist)::GetProcAddress(dllHandle, "ShowHist");
+	if (pShowHist == NULL) {
+		AfxMessageBox(_T("function  load failed!\n"));
+		return false;
+	}
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
@@ -164,11 +189,11 @@ void CtestLedDllDlg::OnBnClickedButton2()
 {
 	if (pInitFun() == 0)
 	{
-		AfxMessageBox("DONE");
+		AfxMessageBox(_T("DONE"));
 	}
 	else
 	{
-		AfxMessageBox("Failed");
+		AfxMessageBox(_T("Failed"));
 	}
 }
 
@@ -187,25 +212,46 @@ void CtestLedDllDlg::OnBnClickedButton3()
 
 void CtestLedDllDlg::OnBnClickedButton5()
 {
-	// TODO: 在此添加控件通知处理程序代码
-	if (pGrabOneImageDrect() == 0)
-	{
-		AfxMessageBox("DONE");
-	}
-	else
-	{
-		AfxMessageBox("FAIL");
-	}
-}
-
-
-void CtestLedDllDlg::OnBnClickedButton6()
-{
 	char res[20];
 	memset(res, 0, 20);
 	std::string strroot = "E:\\LedDll\\testLedDll\\";
 	char p[1024] = { 0 };
 	memset(p, '\0', 1024);
 	strcpy_s(p, strroot.c_str());
-	pRunDirect2(p,"E:\\LedDll\\testLedDll\\Task\\Task.ini", res);
+	// TODO: 在此添加控件通知处理程序代码
+	if (pGrabOneImageDrect2(p) == 0)
+	{
+		AfxMessageBox(_T("DONE"));
+	}
+	else
+	{
+		AfxMessageBox(_T("FAIL"));
+	}
+}
+
+
+void CtestLedDllDlg::OnBnClickedButton6()
+{
+	UpdateData();
+	char res[20];
+	memset(res, 0, 20);
+	//std::string strroot(m_streditRoot);/*"E:\\LedDll\\testLedDll\\"*/;
+	char p[1024] = { 0 };
+	memset(p, '\0', 1024);
+	sprintf_s(p, "%s", (LPTSTR)(LPCTSTR)m_streditRoot);
+	//strcpy_s(p, m_streditRoot);
+	//pRunDirect2(p,"E:\\LedDll\\testLedDll\\Task\\Task.ini", res);
+	char p2[1024] = { 0 };
+	memset(p2, '\0', 1024);
+	sprintf_s(p2, "%s", (LPTSTR)(LPCTSTR)m_streditIni);
+	int re = pRunDirect3(p,p2);
+	int fe = re+1;
+	return;
+}
+
+
+void CtestLedDllDlg::OnBnClickedButton7()
+{
+	//pDectectNum();
+	pShowHist();
 }

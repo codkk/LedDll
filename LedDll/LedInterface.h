@@ -45,3 +45,16 @@ extern "C" _declspec(dllexport) int RunDirect(char* pPath, char* pRes);
 //      pRes:   传入的一维数组指针，20个元素，请先初始化为全1，如果测试PASS则会在响应元素位置置1， 反之置0.
 //返回值： 错误码
 extern "C" _declspec(dllexport) int RunDirect2(char* rootpath, char* pPath, char* pRes);
+
+//函数： 直接获取一张图像，（包含了InitDll, RunDirect, UinitDll）
+//参数:  rootpath：dll所在根目录，以斜杠“\”结尾
+//		pPath:  任务文件*ini,所在目录，完整绝对路径。
+//返回值： 错误码以及返回值32位每一位代表结果，0代表false,1代表trueOK
+extern "C" _declspec(dllexport) int RunDirect3(char* rootpath, char* pPath);
+
+//函数： 模板匹配，识别数码管
+//
+extern "C" _declspec(dllexport) int DetectNum();
+
+//函数 ：显示色调的直方图
+extern "C" _declspec(dllexport) int ShowHist();
